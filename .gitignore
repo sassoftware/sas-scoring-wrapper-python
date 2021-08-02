@@ -1,0 +1,6 @@
+dev/_authinfo
+pysct.egg-info/
+dev/
+samples/
+.vscode/
+__psycache__/
