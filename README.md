@@ -236,4 +236,6 @@ This project is licensed under the [Apache 2.0 License](LICENSE).
 
  - A similar library is available for [R](https://github.com/sassoftware/sas-scoring-translator-r)
  
- - SAS Communities Post (coming soon)
+ - SAS Communities Post 
+    - [English](https://communities.sas.com/t5/SAS-Communities-Library/SAS-Scoring-code-translator-for-Python-and-R/ta-p/759542) 
+    - [Portuguese](https://communities.sas.com/t5/Forum-em-portugu%C3%AAs/Tradutor-de-codigo-de-scoragem-de-SAS-para-Python-e-R/m-p/762949)
