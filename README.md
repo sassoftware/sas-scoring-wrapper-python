@@ -1,4 +1,4 @@
-pysct - SAS Scoring Code Translator for Python
+pysct - SAS Scoring Code Wrapper for Python
 ================
 
 # Overview

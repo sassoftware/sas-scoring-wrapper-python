@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="pysct", # Replace with your own username
-    version="0.0.25",
+    version="0.0.3",
     author="SAS Institute",
     author_email="eduardo.hellas@sas.com",
     description="Translator for SAS Viya Score code to python",

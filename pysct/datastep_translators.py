@@ -27,7 +27,7 @@ def DS_translate(in_file,
         Name of the input table
     out_caslib : str
         Name of the input table caslib
-    out_castable  : 
+    out_castable  : str
         Name of the input table
     hostname : str
         Name of the hostname. Default: None, will try to guess from file.
@@ -149,7 +149,7 @@ def EPS_translate(in_file,
         Name of the input table
     out_caslib : str
         Name of the input table caslib
-    out_castable  : 
+    out_castable  : str
         Name of the input table
     out_file : str
         Name and path of the output file. Default: "dmcas_epscorecode.py"

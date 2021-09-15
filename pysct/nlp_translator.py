@@ -18,7 +18,12 @@ def nlp_sentiment_translate(
                             hostname = None,
                             out_castable_matches = None, 
                             out_castable_features = None,
-                            out_file = "SentimentScoreCode.py"
+                            out_file = "SentimentScoreCode.py",
+                            astore = False,
+                            astore_caslib = "casuser",
+                            astore_name = "Sentiment_Astore",
+                            astore_path = "SentimentModel.astore",
+                            copyVars = None
 ):
     """It will read the score code that is written as SAS Code extract the language and hostame, 
        then write a python code equivalent using the `SWAT` package.
@@ -33,16 +38,27 @@ def nlp_sentiment_translate(
         Name of the input table
     out_caslib : str
         Name of the output table caslib
-    out_castable_sentiment  : 
+    out_castable_sentiment  : str
         sentiment output table name
-    out_castable_matches  : 
+    out_castable_matches  : str
         matches output table name, if the argument is not defined the table name will be the same as `out_castable_sentiment` with "_matches" added
-    out_castable_features  : 
+    out_castable_features  : str
         features output table name, if the argument is not defined the table name will be the same as `out_castable_sentiment` with "_features" added   
-    key_column  : 
+    key_column  : str
         Key column name for unique identifier
-    document_column  : 
-        text variable column name           
+    document_column  : str
+        text variable column name    
+    astore : bool
+        If set to `True` it will create a scoring code that uploads the astore, available for SAS Viya 2021.1.4 or higher       
+    astore_caslib : str
+        Only used when `astore = True`. The caslib where the astore model is uploaded
+    astore_name : str
+        Only used when `astore = True`. The castable name where the astore model is uploaded
+    astore_path : str
+        Only used when `astore = True`. The filepath to the astore file (extract from .zip first)
+    copyVars : list
+        Only used when `astore = True` list of column names to copy to output table, if "ALL" will copy all score table data. Default: `None`
+
 
     out_file : str
         Name and path of the output file. Default: "SentimentScoreCode.py"
@@ -70,14 +86,19 @@ def nlp_sentiment_translate(
 
 
     archives = zipfile.ZipFile(in_file, "r")
-    rawScore = archives.read("ScoreCode.sas").decode("UTF-8")
+
+    if astore == False:
+        rawScore = archives.read("ScoreCode.sas").decode("UTF-8")
+    if astore == True:
+        rawScore = archives.read("AstoreScoreCode.sas").decode("UTF-8")
 
 ### getting hostname
     if hostname is None:
         hostname = re.search('(?<=%let cas_server_hostname = ")(.*)(?=";)', rawScore).group(0)
 
 ## getting language
-    language = re.search('(?<=%let language = ")(.*)(?=";)', rawScore).group(0)
+    if astore == False:
+        language = re.search('(?<=%let language = ")(.*)(?=";)', rawScore).group(0)
 
 ## writing code header 
     pyscore = """## SWAT package needed to run the codes, below the packages in pip and conda
@@ -87,10 +108,37 @@ def nlp_sentiment_translate(
 import swat \n
 """
 
+## creating copyVars acording to the input
+    if astore == True:
+        if type(copyVars) is list:
+            pass
+        elif (type(copyVars) is str):
+            copyVars = [copyVars]
+        else:
+            Exception("copyVars must be a list, \"ALL\" or None")    
+            
+
+        if copyVars is None:
+            copyVars_ = "column_names = None\n"
+
+        if copyVars is not None:
+            if (len(copyVars) == 1) and (copyVars[0] == "ALL"):
+                copyVars_ = """## Defining scoring table obtaining column names"\n
+score_table = conn.CASTable(name = in_castable,
+                                caslib = in_caslib)\n
+column_names = score_table.columns.tolist()\n
+"""
+
+            elif (len(copyVars) >= 1):
+                copyVars_ = """## Defining scoring table obtaining column names"\n
+column_names = {} \n
+""".format(copyVars)
+
 ###### writing score code
 
 ## defining variables
-    pyscore += """## Defining tables and models variables\n
+    if astore == False:
+        pyscore += """## Defining tables and models variables\n
 
 in_caslib = \"{}\"
 in_castable = \"{}\"
@@ -106,7 +154,23 @@ language = \"{}\" \n
             out_castable_features, key_column, \
             document_column, language
             )
+    if astore == True:
 
+        pyscore += """## Defining tables and models variables\n
+
+in_caslib = \"{}\"
+in_castable = \"{}\"
+out_caslib = \"{}\"
+out_castable_sentiment = \"{}\"
+astore_caslib = \"{}\"
+astore_name = \"{}\"
+astore_path = \"{}\" \n
+""".format(in_caslib, in_castable, out_caslib, 
+            out_castable_sentiment, astore_caslib,
+            astore_name, astore_path
+            )
+
+        
 ## Writting connection
 
     pyscore += """## Connecting to SAS Viya \n
@@ -119,8 +183,8 @@ conn = swat.CAS(hostname = \"{}\", ## change if needed
 """.format(hostname)
 
 ## score Code apply sent
-
-    pyscore += """## loading sentimentAnalysis actionset and scoring"
+    if astore == False:
+        pyscore += """## loading sentimentAnalysis actionset and scoring"
 conn.loadActionSet("sentimentAnalysis") \n
 conn.sentimentAnalysis.applySent(
         table = {"name": in_castable, "caslib": in_caslib},
@@ -131,6 +195,40 @@ conn.sentimentAnalysis.applySent(
         matchOut = {"caslib": out_caslib, "name": out_castable_matches, "replace": True},
         featureOut = {"caslib": out_caslib, "name": out_castable_features, "replace": True}
     )\n
+    """
+### Loading astore table into memory (astore should already be inside server)
+ 
+    if astore == True:
+
+## copyVars will define castable to get column names if needed
+
+        pyscore += copyVars_
+
+## score action
+
+        pyscore += """## loading actionset actionset and scoring\n
+conn.loadActionSet("astore") \n
+
+## Uploading model to a new server\n
+with open(astore_path,'rb') as file:
+      blob = file.read()
+      
+store_ = swat.blob(blob)
+
+## where the Error occurs
+conn.astore.upload(store = store_,
+               rstore= {"name": astore_name, 
+                        "caslib": astore_caslib},
+                    )\n
+
+## The input table column names must be the equal as the training table\n
+conn.astore.score(
+        table = {"name": in_castable, "caslib": in_caslib},
+        casOut = {"caslib": out_caslib, "name": out_castable_sentiment, "replace": True},
+        copyVars = column_names,
+        rstore = {"caslib": astore_caslib, "name": astore_name} ## if you uploaded manually, change may be needed
+    )\n
+
     """
 
 ## reading output table
@@ -198,15 +296,15 @@ def nlp_category_translate(
         Name of the input table
     out_caslib : str
         Name of the output table caslib
-    out_castable_category  : 
+    out_castable_category  : str
         category output table name
-    out_castable_matches  : 
+    out_castable_matches  : str
         matches output table name, if the argument is not defined the table name will be the same as `out_castable_category` with "_matches" added
-    out_castable_modeling_table  : 
+    out_castable_modeling_table  : str
         modeling ready output table name, if the argument is not defined the table name will be the same as `out_castable_category` with "_modeling" added   
-    key_column  : 
+    key_column  : str
         Key column name for unique identifier
-    document_column  : 
+    document_column  : str
         text variable column name           
 
     out_file : str
@@ -327,10 +425,6 @@ scored_category_table.head()
                 "out_castable_modeling": out_castable_modeling_table
     })
 
-##################################
-######## DONE UP TO HERE #########
-##################################
-
 
 ##################################
 ### NLP Translate             ####
@@ -339,7 +433,7 @@ scored_category_table.head()
 
 ### TO DO
 ### AN Alternative version can be made using ASTORE actionset to upload to different environments
-###
+### check Sentiment astore version for an idea (big files seems to timeout)
 
 def nlp_topics_translate(
                             in_file,
@@ -363,7 +457,7 @@ def nlp_topics_translate(
         Name of the input table
     out_caslib : str
         Name of the output table caslib
-    out_castable  : 
+    out_castable  : str
         topics output table name
     out_file : str
         Name and path of the output file. Default: "topicsScoreCode.py"
@@ -513,7 +607,7 @@ scored_topics_table.head()
 
 ### TO DO
 ### AN Alternative version can be made using ASTORE actionset to upload to different environments
-###
+### check Sentiment astore version for an idea (big files seems to timeout)
 
 def nlp_concepts_translate(
                             in_file,

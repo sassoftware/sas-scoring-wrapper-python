@@ -4,7 +4,7 @@
 # Copyright © 2020, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
  
-__version__ = '0.0.25'
+__version__ = '0.0.3'
 __author__ = 'SAS'
 __credits__ = ['Eduardo Hellas']
 __license__ = 'Apache 2.0'
