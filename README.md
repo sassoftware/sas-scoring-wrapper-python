@@ -13,7 +13,7 @@ good starting point for integration.
 ## What can be translated
 
 This package will translate (or wrap) some Scoring Codes that are export
-through some of Viya interfaces. All the output R codes are based on the
+through some of Viya interfaces. All the output Python codes are based on the
 [Python SWAT](https://github.com/sassoftware/python-swat/) package. It’s not
 necessary for this package translation to run, but is necessary to run
 the output code.
@@ -34,7 +34,7 @@ which kind of code:
 -   **Translation Function**: Name of the function to translate it
     properly
 
--   **Output Type**: The way the R code is going to be translated to be
+-   **Output Type**: The way the Python code is going to be translated to be
     used outside of the SAS environment
 
 -   **Sample File**: Sample of the usual name that is exported by the SAS visual interfaces
@@ -89,9 +89,9 @@ out.keys()
 
 
 
-And here is a sample of the generated code, as you will see, credentials
-and servers may be needed to be tweaked manually, other than that, it’s
-fully operational:
+And here is a sample of the generated code, as you see, credentials
+and servers may require tweaks, other than that, it’s
+fully functional:
 
 ``` python
 ## SWAT package needed to run the codes, below the packages in pip and conda
